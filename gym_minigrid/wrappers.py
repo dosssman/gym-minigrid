@@ -328,3 +328,33 @@ class ViewSizeWrapper(gym.core.Wrapper):
 
     def step(self, action):
         return self.env.step(action)
+
+# Custom wrappers
+class FlatObsWrapperNoMission(gym.core.ObservationWrapper):
+    """
+    Encode mission strings using a one-hot scheme,
+    and combine these with observed images into one flat array
+    """
+
+    def __init__(self, env, maxStrLen=96):
+        super().__init__(env)
+
+        self.numCharCodes = 27
+
+        imgSpace = env.observation_space.spaces['image']
+        imgSize = reduce(operator.mul, imgSpace.shape, 1)
+
+        self.observation_space = spaces.Box(
+            low=0,
+            high=255,
+            shape=(1, imgSize),
+            dtype='uint8'
+        )
+
+        self.cachedStr = None
+        self.cachedArray = None
+
+    def observation(self, obs):
+        image = obs['image']
+
+        return image.flatten()

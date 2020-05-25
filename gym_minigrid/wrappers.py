@@ -261,7 +261,7 @@ class FlatObsWrapperNoMission(gym.core.ObservationWrapper):
         self.observation_space = spaces.Box(
             low=0,
             high=255,
-            shape=imgSize,
+            shape=int(np.prod(imgSpace.shape)),
             dtype='uint8'
         )
 

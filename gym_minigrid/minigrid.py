@@ -1,4 +1,5 @@
 import math
+import hashlib
 import gym
 from enum import IntEnum
 import numpy as np
@@ -142,7 +143,7 @@ class WorldObj:
         elif obj_type == 'lava':
             v = Lava()
         else:
-            assert False, "unknown object type in decode '%s'" % objType
+            assert False, "unknown object type in decode '%s'" % obj_type
 
         return v
 
@@ -171,17 +172,11 @@ class Floor(WorldObj):
     def can_overlap(self):
         return True
 
-    def render(self, r):
+    def render(self, img):
         # Give the floor a pale color
-        c = COLORS[self.color]
-        r.setLineColor(100, 100, 100, 0)
-        r.setColor(*c/2)
-        r.drawPolygon([
-            (1          , TILE_PIXELS),
-            (TILE_PIXELS, TILE_PIXELS),
-            (TILE_PIXELS,           1),
-            (1          ,           1)
-        ])
+        color = COLORS[self.color] / 2        
+        fill_coords(img, point_in_rect(0.031, 1, 0.031, 1), color)
+
 
 class Lava(WorldObj):
     def __init__(self):
@@ -738,6 +733,18 @@ class MiniGridEnv(gym.Env):
         # Seed the random number generator
         self.np_random, _ = seeding.np_random(seed)
         return [seed]
+
+    def hash(self, size=16):
+        """Compute a hash that uniquely identifies the current state of the environment.
+        :param size: Size of the hashing
+        """
+        sample_hash = hashlib.sha256()
+
+        to_encode = [self.grid.encode(), self.agent_pos, self.agent_dir]
+        for item in to_encode:
+            sample_hash.update(str(item).encode('utf8'))
+
+        return sample_hash.hexdigest()[:size]
 
     @property
     def steps_remaining(self):

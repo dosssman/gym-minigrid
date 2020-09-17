@@ -98,6 +98,7 @@ class StateBonus(gym.core.Wrapper):
     def reset(self, **kwargs):
         return self.env.reset(**kwargs)
 
+## NoteL equivalent to a no mission wrapper
 class ImgObsWrapper(gym.core.ObservationWrapper):
     """
     Use the image as the only observation output, no language/mission.
@@ -185,6 +186,56 @@ class RGBImgObsWrapper(gym.core.ObservationWrapper):
             'image': rgb_img
         }
 
+## Custom: RGBImgObsWrapper stripped from the mission field
+class RGBImgObsWrapperNoMission(gym.core.ObservationWrapper):
+    def __init__(self, env, tile_size=8):
+        super().__init__(env)
+
+        self.tile_size = tile_size
+
+        self.observation_space = spaces.Box(
+            low=0,
+            high=255,
+            shape=(self.env.width * tile_size, self.env.height * tile_size, 3),
+            dtype='uint8'
+        )
+
+    def observation(self, obs):
+        env = self.unwrapped
+
+        rgb_img = env.render(
+            mode='rgb_array',
+            highlight=False,
+            tile_size=self.tile_size
+        )
+
+        return rgb_img
+
+# Props to cleanrl
+class ImageToPyTorch(gym.ObservationWrapper):
+    def __init__(self, env):
+        super(ImageToPyTorch, self).__init__(env)
+        old_shape = self.observation_space.shape
+        self.observation_space = gym.spaces.Box(
+            low=0,
+            high=1,
+            shape=(old_shape[-1], old_shape[0], old_shape[1]),
+            dtype=np.int32,
+        )
+
+    def observation(self, observation):
+        return np.transpose(observation, axes=(2, 0, 1))
+
+# deepmind atari's wrappers
+class ScaledFloatFrame(gym.ObservationWrapper):
+    def __init__(self, env):
+        gym.ObservationWrapper.__init__(self, env)
+        self.observation_space = gym.spaces.Box(low=0, high=1, shape=env.observation_space.shape, dtype=np.float32)
+
+    def observation(self, observation):
+        # careful! This undoes the memory optimization, use
+        # with smaller replay buffers only.
+        return np.array(observation).astype(np.float32) / 255.0
 
 class RGBImgPartialObsWrapper(gym.core.ObservationWrapper):
     """
@@ -275,8 +326,7 @@ class FullyObsWrapperNoMission(gym.core.ObservationWrapper):
 
 class FlatObsWrapperNoMission(gym.core.ObservationWrapper):
     """
-    Encode mission strings using a one-hot scheme,
-    and combine these with observed images into one flat array
+    Does not encode the mission. Return the observation as a flat array ?
     """
 
     def __init__(self, env, maxStrLen=96):
